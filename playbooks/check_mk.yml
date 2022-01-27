@@ -1,0 +1,29 @@
+---
+- hosts: all
+  become: yes
+  
+  tasks:
+    - name: Copiamos el archivo RPM
+      copy:
+        src: files/check-mk-agent-1.6.0p14-1.noarch.rpm
+        dest: /tmp/check-mk-agent-1.6.0p14-1.noarch.rpm
+  
+    - name: Instalamos el RPM
+      yum:
+        name: /tmp/check-mk-agent-1.6.0p14-1.noarch.rpm
+        state: present
+
+    - name: Actualizamos el archivo de configuración
+      template:
+        src: files/xinetd_config.j2
+        dest: /etc/xinetd.d/check_mk
+        owner: root
+        group: root
+        mode: 0644 
+      notify: Reiniciamos el servicio
+
+  handlers:
+    - name: Reiniciamos el servicio
+      systemd:
+        name: check_mk.socket
+        state: restarted

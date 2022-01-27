@@ -1,0 +1,26 @@
+# Servidores de aplicaciones
+[app]
+demo1 ansible_host=192.168.63.11
+
+# Bases de datos
+[db]
+demo2 ansible_host=192.168.63.12
+
+# Servidores tomcat
+[tomcat]
+demo2 ansible_host=192.168.63.12
+
+
+# Sistema operativo CentOS
+[centos]
+demo1
+demo2
+
+# Aplicación corp
+[corp:children]
+app
+db
+
+[all:vars]
+ansible_user=vagrant
+check_mk_server=192.168.70.11

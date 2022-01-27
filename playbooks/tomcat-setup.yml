@@ -1,0 +1,112 @@
+---
+- name: install tomcat server
+  hosts: app
+  become: true
+
+  vars:
+    jdk_version: java-11-openjdk-headless
+    tomcat_version: 8.5.75
+    tomcat8_path: /usr/local/tomcat8
+    keystore_path: /etc/pki/tls/certs/server_cert.p12
+    keystore_pass: vagrant
+
+  pre_tasks:
+    - name: Habilita el firewall
+      systemd:
+        state: started
+        name: firewalld
+
+    - name: Permite el acceso al puerto 8080/tcp
+      ansible.posix.firewalld:
+        port: 8080/tcp
+        state: enabled
+        immediate: yes
+        permanent: yes
+
+    - name: Permite el acceso al puerto 8443/tcp
+      ansible.posix.firewalld:
+        port: 8443/tcp
+        state: enabled
+        immediate: yes
+        permanent: yes
+
+
+  tasks:
+    - name: Actualiza todos los paquetes
+      yum:
+        name: "*"
+        state: latest
+
+    - name: Instala OpenJDK
+      yum:
+        name: "{{ jdk_version }}"
+
+    - name: Descarga y descomprime la distribución de tomcat del sitio web de Apache
+      unarchive:
+        src: https://dlcdn.apache.org/tomcat/tomcat-8/v{{ tomcat_version }}/bin/apache-tomcat-{{ tomcat_version }}.tar.gz
+        dest: /opt
+        creates: /opt/apache-tomcat-{{ tomcat_version }}
+        remote_src: yes
+
+    - name: Crea el grupo tomcat
+      group: 
+        name: tomcat8
+    
+    - name: Crea el usuario tomcat
+      user:
+        name: tomcat8
+        group: tomcat8
+        shell: /bin/false 
+        home: /home/tomcat8
+    
+    - name: Modifica el propietario
+      file: 
+        path: /opt/apache-tomcat-{{ tomcat_version }}
+        owner: tomcat8
+        group: tomcat8
+        recurse: yes
+        state: directory
+    
+    - name: Crea un enlace para tomcat
+      file: 
+        src: /opt/apache-tomcat-{{ tomcat_version }}
+        dest: "{{ tomcat8_path }}"
+        state: link
+
+    - name: Copia el almacén de certificados PKCS12
+      copy:
+        src: files/server_cert.p12
+        dest: /etc/pki/tls/certs/server_cert.p12
+        owner: tomcat8
+        group: tomcat8
+        mode: 0400
+    
+    - name: Modifica el archivo server.xml para activar HTTPS
+      template:
+        src: files/server.xml.j2
+        dest: "{{ tomcat8_path }}/conf/server.xml"
+        owner: tomcat8
+        group: tomcat8
+        mode: 0400
+      notify: Reinicia el servicio de tomcat 8
+
+    - name: Copia el archivo unit para le servicio tomcat
+      template: 
+        src: files/tomcat8.service.j2
+        dest: /etc/systemd/system/tomcat8.service
+      notify: Reinicia el servicio de tomcat 8
+    
+    - name: Inicia y habilita tomcat 8
+      systemd:
+        state: started
+        enabled: yes
+        daemon_reload: yes
+        name: tomcat8
+
+  handlers:
+    - name: Reinicia el servicio de tomcat 8
+      systemd:
+        state: restarted
+        enabled: yes
+        daemon_reload: yes
+        name: tomcat8

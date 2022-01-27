@@ -1,0 +1,30 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  # General Vagrant VM configuration
+  config.vm.box = "pmontesd/centos7-pass-demo"
+  config.vm.box_version = "0.1.0"
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+  config.ssh.insert_key = false
+  config.ssh.password = "vagrant"
+  config.vbguest.auto_update = false
+
+  config.vm.provider :virtualbox do |v|
+    v.memory = 1024
+    v.linked_clone = true
+  end
+
+  # Demo server 1
+  config.vm.define "demo1" do |demo|
+    demo.vm.hostname = "demo1.test"
+    demo.vm.network :private_network, ip: "192.168.63.11"
+  end
+  
+  # Demo server 2
+  config.vm.define "demo2" do |demo|
+    demo.vm.hostname = "demo2.test"
+    demo.vm.network :private_network, ip: "192.168.63.12"
+  end
+  
+end
